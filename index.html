@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>大乱闘スマッシュ将棋 SPECIAL STOCKS - LV9 CPU EDITION</title>
     <style>
-        body {
+                body {
             margin: 0;
             padding: 0;
             background: #111;
@@ -15,11 +15,22 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            overflow: hidden;
+            /* ★ overflow: hidden; を削除して、画面全体の強制カットを解除 */
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none;
+            /* ★ touch-action: none; を削除して、スマホのスクロール（スワイプ）を許可 */
         }
+
+        /* 既存のスタイル（#screen-shaker から #title-screen など）はそのまま */
+
+        #select-screen {
+            padding: 15px;
+            background: linear-gradient(135deg, #1e272e, #485460);
+            /* ★ スマホで画面からはみ出た場合、この選択画面の中だけでスクロールできるように設定 */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかにする */
+        }
+
 
         #screen-shaker {
             width: 100vw;
@@ -1467,6 +1478,7 @@ function updateFrame() {
             if (e.isGrounded) {
                 e.hasAirJumped = false;
             }
+
             // 超反応攻撃（LV9）
             if (e.cooldown <= 0 && Math.abs(dist) < e.range + 15 && Math.abs(e.y - p.y) < 35 && e.x >= 75 && e.x <= 485) {
                 e.attacking = 12;
@@ -1664,5 +1676,8 @@ setTimeout(() => {
 </script>
 </body>
 </html>
+
+
+
 
 
