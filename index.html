@@ -1437,15 +1437,15 @@ function updateFrame() {
 
     e.vy += 0.45;
     e.x += e.vx;
-    e.y += e.vy;
-    // 5. ステージの床（プラットフォーム）との衝突判定（完全確定版）
+    e.y += e.vy;    // 5. ステージの床（プラットフォーム）との衝突判定（終点・浮島完全同期版）
     const checkPlatform = (char) => {
         let isSteeringDown = (char === p && keys.shift);
         char.isGrounded = false;
         if (char.vy < 0) return; // 上昇中はすり抜ける
 
-        // --- ① メインの地面（自然な位置に下がったメイン床の表面） ---
-        if (char.x >= 70 && char.x <= 490) {
+        // --- ① メインの地面（表示上の灰色の床 #main-platform の上表面に完全一致） ---
+        // グラフィックの配置（left: 100px 〜 右端 500px）にピッタリ合わせました
+        if (char.x >= 75 && char.x <= 485) { 
             let mainGroundY = (char === p) ? 212 : 208; 
             if (char.y >= mainGroundY && char.y <= mainGroundY + 10) {
                 char.y = mainGroundY;
