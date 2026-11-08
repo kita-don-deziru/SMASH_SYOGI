@@ -173,9 +173,9 @@
             position: relative;
         }
 
-        #main-platform {
+         #main-platform {
             position: absolute;
-            bottom: 90px;
+            bottom: 190px; /* 👈 内部の物理座標 y=218 に一致するよう100px上に移動 */
             left: 100px;
             width: 400px;
             height: 16px;
@@ -184,6 +184,17 @@
             box-sizing: border-box;
             z-index: 5;
         }
+
+        .sub-plat {
+            position: absolute;
+            height: 8px;
+            background: #333;
+            border-top: 2px solid #555;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+
+
 
         .sub-plat {
             position: absolute;
@@ -524,10 +535,10 @@
             <div id="game-view" class="screen">
                 <div id="battle-stage">
                     <div id="main-platform"></div>
-                    <div id="plat-left" class="sub-plat" style="bottom:165px; left:140px; width:100px; display:none;"></div>
-                    <div id="plat-right" class="sub-plat" style="bottom:165px; left:360px; width:100px; display:none;"></div>
-                    <div id="plat-top" class="sub-plat" style="bottom:230px; left:250px; width:100px; display:none;"></div>
-                    <div id="fire-ground"></div>
+                                        <div id="plat-left" class="sub-plat" style="bottom:265px; left:140px; width:100px; display:none;"></div>
+                    <div id="plat-right" class="sub-plat" style="bottom:265px; left:360px; width:100px; display:none;"></div>
+                    <div id="plat-top" class="sub-plat" style="bottom:330px; left:250px; width:100px; display:none;"></div>
+
 
                     <div id="player-fighter" class="piece">
                         <span id="p-text">歩</span>
