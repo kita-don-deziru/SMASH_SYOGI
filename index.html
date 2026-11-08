@@ -1,124 +1,6 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-                <style></style>
-            </head>
-            <body>
-                <script>(function installLiveweaveConsoleBridge() {
-        if (window.__liveweaveConsoleBridge) return;
-        window.__liveweaveConsoleBridge = true;
-
-        function format(value) {
-            if (typeof value === 'string') return value;
-            if (typeof value === 'undefined') return 'undefined';
-            if (typeof value === 'function') return value.toString();
-            if (value instanceof Error) return value.name + ': ' + value.message;
-            if (value instanceof Element) return value.outerHTML;
-            try {
-                var seen = [];
-                return JSON.stringify(value, function(key, item) {
-                    if (typeof item === 'object' && item !== null) {
-                        if (seen.indexOf(item) !== -1) return '[Circular]';
-                        seen.push(item);
-                    }
-                    return item;
-                }, 2);
-            } catch (err) {
-                return String(value);
-            }
-        }
-
-        function send(type, values, id) {
-            parent.postMessage({
-                source: 'liveweave-preview-console',
-                type: type,
-                id: id || '',
-                values: (values || []).map(format)
-            }, '*');
-        }
-
-        ['log', 'info', 'warn', 'error', 'debug'].forEach(function(level) {
-            var original = console[level];
-            console[level] = function() {
-                var args = Array.prototype.slice.call(arguments);
-                send(level === 'log' || level === 'debug' ? 'log' : level, args);
-                if (original) original.apply(console, args);
-            };
-        });
-
-        window.addEventListener('error', function(event) {
-            send('error', [event.message + (event.lineno ? ' (line ' + event.lineno + ')' : '')]);
-        });
-        window.addEventListener('unhandledrejection', function(event) {
-            send('error', ['Unhandled promise rejection:', event.reason]);
-        });
-        window.addEventListener('message', function(event) {
-            var message = event.data || {};
-            if (event.source !== parent || message.source !== 'liveweave-parent-console' || message.type !== 'evaluate') return;
-            try {
-                var result = (0, eval)(message.code);
-                Promise.resolve(result).then(function(value) {
-                    send('result', [value], message.id);
-                }, function(error) {
-                    send('error', [error], message.id);
-                });
-            } catch (error) {
-                send('error', [error], message.id);
-            }
-        });
-        send('ready', []);
-    })();</script>
-                <script>(function installPreviewLinkGuard() {
-        var noticeTimer;
-
-        function showNotice(message) {
-            var notice = document.getElementById('lw-preview-link-notice');
-            if (!notice) {
-                notice = document.createElement('div');
-                notice.id = 'lw-preview-link-notice';
-                notice.setAttribute('role', 'status');
-                notice.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:2147483647;max-width:calc(100% - 24px);padding:10px 14px;border-radius:9px;background:#17212d;color:#fff;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);pointer-events:none;';
-                document.body.appendChild(notice);
-            }
-            notice.textContent = message;
-            notice.hidden = false;
-            clearTimeout(noticeTimer);
-            noticeTimer = setTimeout(function() { notice.hidden = true; }, 3500);
-        }
-
-        document.addEventListener('click', function(event) {
-            var link = event.target.closest && event.target.closest('a[href]');
-            if (!link || event.defaultPrevented) return;
-
-            var href = (link.getAttribute('href') || '').trim();
-            if (href.charAt(0) === '#') {
-                event.preventDefault();
-                var fragment = href.slice(1);
-                if (!fragment) {
-                    window.scrollTo(0, 0);
-                    return;
-                }
-                try { fragment = decodeURIComponent(fragment); } catch (error) {}
-                var target = document.getElementById(fragment) || document.getElementsByName(fragment)[0];
-                if (target) target.scrollIntoView();
-                return;
-            }
-
-            if (/^(https?:)?\/\//i.test(href)) {
-                event.preventDefault();
-                window.open(href, '_blank', 'noopener,noreferrer');
-                return;
-            }
-
-            if (/^(mailto:|tel:)/i.test(href)) return;
-
-            event.preventDefault();
-            showNotice('This page cannot be opened in the preview.');
-        }, true);
-    })();</script>
-                
-
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>大乱闘スマッシュ将棋 SPECIAL STOCKS - LV9 CPU EDITION</title>
@@ -588,8 +470,8 @@
         .btn-toggle { background: #34495e; color: #fff; border: 1px solid #7f8c8d; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .btn-toggle.active { background: #2ecc71; border-color: #fff; box-shadow: 0 0 8px #2ecc71; }
     </style>
-
-
+</head>
+<body>
 
 <div id="notice-screen">
    <div class="notice-container">
@@ -605,7 +487,7 @@
 </div>
 
 
-<div id="orientation-warning" style="display: flex;"><div class="phone-icon"></div><div>画面を横向きにしてください</div></div>
+<div id="orientation-warning"><div class="phone-icon"></div><div>画面を横向きにしてください</div></div>
 
 <div id="screen-shaker">
     <div id="game-scale-wrapper">
@@ -619,7 +501,7 @@
 
             <!-- 2. キャラクター選択画面 -->
             <div id="select-screen" class="screen">
-                <div class="select-title">ファイター &amp; ステージ選択 <span style="color:#ff3f3f; font-size:11px;">[LV.9 CPU]</span></div>
+                <div class="select-title">ファイター & ステージ選択 <span style="color:#ff3f3f; font-size:11px;">[LV.9 CPU]</span></div>
                 <div class="section-label">あなたの駒を選択してください：</div>
                 <div class="char-grid" id="char-grid-container"></div>
                 <div id="char-desc">駒の説明がここに表示されます。</div>
@@ -1537,33 +1419,43 @@ function updateFrame() {
     e.x += e.vx;
     e.y += e.vy;
 
-    // 5. ステージの床（プラットフォーム）との衝突判定
+      // 5. ステージの床（プラットフォーム）との衝突判定
     const checkPlatform = (char) => {
+        // 急降下・すり抜け入力中は空中床の判定をスキップする
+        let isSteeringDown = (char === p && keys.shift);
+
         char.isGrounded = false;
         if (char.vy < 0) return; // 上昇中はすり抜ける
 
-          // メイン床 (駒の下部が削れている分、判定を沈める)
+        // --- ① メイン床（終点風のメインの地面） ---
+        // 見た目の底辺（bottom: 90px）から計算した正しい着地位置
         if (char.x >= 70 && char.x <= 490) {
-            let groundY = (char === p) ? 224 : 220; // プレイヤーと敵のサイズ差を考慮
-            if (char.y >= groundY && char.y <= groundY + 12) {
-                char.y = groundY; char.vy = 0; char.isGrounded = true;
+            let mainGroundY = (char === p) ? 318 : 314; // キャラクターの高さに合わせた接地位置
+            if (char.y >= mainGroundY && char.y <= mainGroundY + 12) {
+                char.y = mainGroundY;
+                char.vy = 0;
+                char.isGrounded = true;
                 return;
             }
         }
 
-
-        // ステージ2の空中すり抜け床
-        if (selectedStage === 2) {
-            // 左右の床 (y=133) / 中央上の床 (y=68)
+        // --- ② 戦場風・浮島の空中床（ステージ2のみ） ---
+        if (selectedStage === 2 && !isSteeringDown) {
+            // HTMLの配置（bottom: 165px と 230px）から逆算した正確なY座標
+            // 左右の低い床: Y=248 / 中央の高い床: Y=183
             let plats = [
-                { l: 110, r: 230, top: 133 },
-                { l: 330, r: 450, top: 133 },
-                { l: 220, r: 340, top: 68 }
+                { l: 110, r: 230, top: (char === p) ? 243 : 239 }, // 左の浮島
+                { l: 330, r: 450, top: (char === p) ? 243 : 239 }, // 右の浮島
+                { l: 220, r: 340, top: (char === p) ? 178 : 174 }  // 上（中央）の浮島
             ];
+
             for (let pl of plats) {
                 if (char.x >= pl.l && char.x <= pl.r) {
-                    if (char.y >= pl.top && char.y <= pl.top + 8) {
-                        char.y = pl.top; char.vy = 0; char.isGrounded = true;
+                    // 足元が空中床の表面に触れた瞬間だけ着地させる
+                    if (char.y >= pl.top && char.y <= pl.top + 10) {
+                        char.y = pl.top;
+                        char.vy = 0;
+                        char.isGrounded = true;
                         return;
                     }
                 }
@@ -1572,6 +1464,8 @@ function updateFrame() {
     };
     checkPlatform(p);
     checkPlatform(e);
+
+
 
     // 6. 飛び道具（遠距離攻撃）の物理と当たり判定
     for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -1716,15 +1610,10 @@ checkOrientation();
 
 
 </script>
+</body>
+</html>
 
 
 
 
 
-
-
-
-                <script></script>
-            
-        
-    </body>
