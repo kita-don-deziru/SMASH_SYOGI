@@ -700,8 +700,8 @@ let socket = null;
 // エラーが発生してもゲームが止まらないようにガードします
 try {
     if (typeof io !== 'undefined') {
-        // Ciscoフィルターを100%すり抜けるセキュアトンネルURLに自動接続
-        socket = io('https://render.com/docs/node-version', { 
+        // 💡 Renderが自動で繋いでくれた固定URLを直書きして上書きします！（:3000などの数字は一切不要です）
+        socket = io('https://smash-shogi-server2.onrender.com/', { 
             transports: ['websocket', 'polling'],
             secure: true,
             rejectUnauthorized: false
@@ -712,6 +712,8 @@ try {
 } catch (ex) {
     console.error("通信初期化エラー:", ex);
 }
+
+
 
 // 💡 サーバーからの各種電波を受け取ってゲームを動かすイベントリスナーを安全に構築
 if (socket) {
