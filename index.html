@@ -486,7 +486,14 @@
         .btn-toggle { background: #34495e; color: #fff; border: 1px solid #7f8c8d; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .btn-toggle.active { background: #2ecc71; border-color: #fff; box-shadow: 0 0 8px #2ecc71; }
     </style>
+
+    <!-- リアルタイム通信を行うためのSocket.ioライブラリを追加 -->
+<script src="https://socket.io"></script>
+
+
 </head>
+
+
 <body>
 
 <div id="notice-screen">
@@ -528,14 +535,26 @@
                     <button type="button" class="stage-btn selected" onclick="selectStage(1, this)">終点風平原</button>
                     <button type="button" class="stage-btn" onclick="selectStage(2, this)">戦場風浮島</button>
                 </div>
-                <div class="section-label">操作タイプ：</div>
+                              <div class="section-label">操作タイプ：</div>
                 <div style="display:flex; justify-content:center; margin-bottom:10px;">
                     <div class="opt-toggle-container">
                         <button class="btn-toggle active" id="opt-dpad" onclick="toggleControlMode('dpad')">十字キー</button>
                         <button class="btn-toggle" id="opt-analog" onclick="toggleControlMode('analog')">スティック(メンテ中)</button>
                     </div>
                 </div>
-                <button id="start-game-btn" onclick="startGame()">乱闘開始！！</button>
+
+                <!-- ★ 対戦モード選択を追加 -->
+                <div class="section-label">対戦モード：</div>
+                <div style="display:flex; justify-content:center; margin-bottom:15px;">
+                    <div class="opt-toggle-container">
+                        <button type="button" class="btn-toggle active" id="mode-offline" onclick="toggleGameMode('offline')">VS CPU (オフライン)</button>
+                        <button type="button" class="btn-toggle" id="mode-online" onclick="toggleGameMode('online')">オンライン対戦</button>
+                    </div>
+                </div>
+
+                <button id="start-game-btn" onclick="pressStartButton()">乱闘開始！！</button>
+
+
             </div>
             <!-- 3. ゲームメイン画面 -->
             <div id="game-view" class="screen">
@@ -705,6 +724,14 @@ let selectedStage = 1;
 let gameTimer = null;
 let p = {}, e = {};
 const keys = { arrowleft: false, arrowright: false, ' ': false, z: false, x: false, shift: false };
+
+// --- オンライン用変数を追加 ---
+// ※ localhost:3000 は手元のPCテスト用です。ネット公開時はURLを書き換えます。
+const socket = io('https://solid-space-dollop-w9gg5wqvw5j394rx-3000.app.github.dev'); 
+let myRole = null;       // 'host' (1P/左側) または 'guest' (2P/右側)
+let roomId = null;       // マッチングした部屋のID
+let isMatched = false;   // マッチングが成立したか
+
 let spaceReleased = true;
 let zReleased = true;
 let xReleased = true;
@@ -724,6 +751,24 @@ let flySpecialTimer = 0;
 let controlMode = 'dpad';
 let isTouchDevice = false;
 let analogActiveTouchId = null;
+
+// --- ★ モード管理用の変数を追加 ---
+let gameMode = 'offline'; // 'offline' または 'online'
+
+function toggleGameMode(mode) {
+    gameMode = mode;
+    const btnOffline = document.getElementById('mode-offline');
+    const btnOnline = document.getElementById('mode-online');
+    if (mode === 'offline') {
+        btnOffline.classList.add('active');
+        btnOnline.classList.remove('active');
+    } else {
+        btnOffline.classList.add('active'); // 最初はactiveクラスのスタイル流用
+        btnOffline.classList.remove('active');
+        btnOnline.classList.add('active');
+    }
+}
+
 let analogStartX = 0, analogStartY = 0;
 const ANALOG_MAX_RADIUS = 35;
 function showScreen(s) {
@@ -876,6 +921,16 @@ function triggerPlayerAttack() {
                 if (enemySleepTimer <= 0 && enemyStunTimer <= 0) e.dir = -p.dir;
                 if (p.spGauge < 100) { p.spGauge = Math.min(100, p.spGauge + 14.3); updateSPBar(); }
                 spawnHitVisual((p.x + e.x) / 2 + 18, (p.y + e.y) / 2 + 20, e.dmg > 80);
+// --- ✨ 変更後（上記処理のすぐ下に以下を追加） ---
+if (gameMode === 'online' && isMatched && roomId) {
+    socket.emit('hit_enemy', {
+        roomId: roomId,
+        dmgDeal: dmgDeal,
+        vx: e.vx,
+        vy: e.vy,
+        knockbackTimer: e.knockbackTimer
+    });
+}
                 
                 if (selectedCharKey === 'pawn' && !p.isPromoted) {
                     p.hitCount++; 
@@ -962,11 +1017,37 @@ function triggerPlayerSpecial() {
         }
     }
 }
-function startGame() {
+// ★ ボタンから最初に呼ばれる関数
+function pressStartButton() {
+    if (gameMode === 'offline') {
+        // オフラインならマッチング無しで即開始
+        myRole = 'offline';
+        executeGameStart();
+    } else {
+        // オンラインならボタンを待機状態にしてサーバーへ申請
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn) {
+            startBtn.disabled = true;
+            startBtn.textContent = "対戦相手を検索中...";
+            startBtn.style.background = "#555";
+        }
+        socket.emit('join_match', {
+            char: selectedCharKey,
+            stage: selectedStage
+        });
+    }
+}
+
+// 元の startGame() の中身をオンライン対応に拡張した開始関数
+function executeGameStart() {
     window.scrSelect.style.display = 'none';
     window.scrGame.style.display = 'block';
 
     const c = CHAR_DATA[selectedCharKey];
+    
+    // オフラインまたはホストなら左、ゲストなら右スタート
+    let startLeft = (gameMode === 'offline' || myRole === 'host');
+
     document.getElementById('ui-p-name').textContent = "あなた (" + c.name + ")";
     document.getElementById('p-text').textContent = c.name;
     
@@ -981,20 +1062,29 @@ function startGame() {
     }
 
     let isPawn = (selectedCharKey === 'pawn');
+    
     p = {
-        x: 150, y: 212, vx: 0, vy: 0, dmg: 0, // yを212（床の上）にする
-        isGrounded: true, dir: 1, stocks: 3, spGauge: 0,
-        isPromoted: isPawn, hitCount: 0, speed: c.speed, jump: c.jump,
+
+
+        x: startLeft ? 150 : 410, 
+        y: 212, 
+        vx: 0, vy: 0, dmg: 0,
+        isGrounded: true, 
+        dir: startLeft ? 1 : -1, 
+        stocks: 3, spGauge: 0,
+       isPromoted: false, hitCount: 0,hitCount: 0, speed: c.speed, jump: c.jump,
         weight: c.weight, power: c.power, range: c.range,
         passThroughTimer: 0, invulnTimer: 0, onLift: false, liftTimer: 0, attacking: 0
     };
+    
     e = {
-        x: 410, y: 208, vx: 0, vy: 0, dmg: 0, isGrounded: true, // yを208（床の上）にする
-        dir: -1, stocks: 3, cooldown: 0, speed: 2.3, jump: -9.5,
+        x: startLeft ? 410 : 150, 
+        y: 208, 
+        vx: 0, vy: 0, dmg: 0, isGrounded: true,
+        dir: startLeft ? -1 : 1, 
+        stocks: 3, cooldown: 0, speed: 2.3, jump: -9.5,
         weight: 1.4, power: 1.3, range: 45, invulnTimer: 0, onLift: false, liftTimer: 0, attacking: 0
     };
-
-
 
     flySpecialActive = false;
     flySpecialTimer = 0;
@@ -1021,13 +1111,20 @@ function startGame() {
         document.getElementById('ui-p-status').textContent = '';
     }
     
-    let bossList = BOSS_DATA;
-    let chosenBoss = bossList[Math.floor(Math.random() * bossList.length)];
-    document.getElementById('ui-e-name').textContent = chosenBoss.name;
-    document.getElementById('e-text').textContent = chosenBoss.text;
-    const eF = document.getElementById('enemy-fighter');
-    if (eF) eF.style.background = chosenBoss.color;
-    e.speed = chosenBoss.speed; e.jump = chosenBoss.jump; e.weight = chosenBoss.weight; e.power = chosenBoss.power; e.range = chosenBoss.range;
+     if (gameMode === 'offline') {
+        let bossList = BOSS_DATA;
+        let chosenBoss = bossList[Math.floor(Math.random() * bossList.length)];
+        document.getElementById('ui-e-name').textContent = chosenBoss.name;
+        document.getElementById('e-text').textContent = chosenBoss.text;
+        const eF = document.getElementById('enemy-fighter');
+        if (eF) eF.style.background = chosenBoss.color;
+        e.speed = chosenBoss.speed; e.jump = chosenBoss.jump; e.weight = chosenBoss.weight; e.power = chosenBoss.power; e.range = chosenBoss.range;
+    } else {
+        document.getElementById('ui-e-name').textContent = "対戦相手";
+        document.getElementById('e-text').textContent = "敵";
+    }
+
+
 
     updateUI();
     setupTouchControls();
@@ -1183,7 +1280,15 @@ function endMatch(playerWon) {
     window.removeEventListener('keyup', handleKeyUp);
     resetAllKeyStates();
     
+    // オンライン時はランキング登録をスキップして終了
+    if (gameMode === 'online') {
+        alert(playerWon ? '対戦相手に勝利しました！🏆' : '敗北しました...');
+        goToSelectScreen();
+        return;
+    }
+
     if (playerWon) { 
+
         alert('王将のストックをすべて削り切った！LV9 CPUに完全勝利です！🏆\nクリア記録: ' + formatTime(matchElapsedTime)); 
         
         let confirmRegister = confirm("ランキングに登録しますか？");
@@ -1423,105 +1528,88 @@ function updateFrame() {
     p.x += p.vx;
     p.y += p.vy;
 
-    // 4. LV9 CPU（敵）の最強AI行動処理
-    if (!e.onLift) {
-        if (e.knockbackTimer > 0) {
-            e.knockbackTimer--;
-        } else if (enemySleepTimer <= 0 && enemyStunTimer <= 0) {
-            let pCenterX = p.x + 18;
-            let eCenterX = e.x + 20;
-            let dist = eCenterX - pCenterX;
+    // 4. 行動処理（オフラインならCPUのAI、オンラインならデータ通信に分岐）
+    if (gameMode === 'offline') {
+        if (!e.onLift) {
+            if (e.knockbackTimer > 0) {
+                e.knockbackTimer--;
+            } else if (enemySleepTimer <= 0 && enemyStunTimer <= 0) {
+                let pCenterX = p.x + 18;
+                let eCenterX = e.x + 20;
+                let dist = eCenterX - pCenterX;
 
-            // 崖際安全ブレーキシステム
-            let isNearLeftCliff = (e.x < 110);
-            let isNearRightCliff = (e.x > 450);
-            let isPlayerOutside = (p.x < 75 || p.x > 485);
+                // 崖際安全ブレーキシステム
+                let isNearLeftCliff = (e.x < 110);
+                let isNearRightCliff = (e.x > 450);
+                let isPlayerOutside = (p.x < 75 || p.x > 485);
 
-            if (Math.abs(dist) > e.range - 10) {
-                e.vx = dist > 0 ? -e.speed : e.speed;
-                e.dir = dist > 0 ? -1 : 1;
-            } else {
-                e.vx *= 0.7;
-            }
-
-            if ((isNearLeftCliff && e.vx < 0 && isPlayerOutside) || (isNearRightCliff && e.vx > 0 && isPlayerOutside)) {
-                e.vx = 0;
-            }
-
-            // ガチ崖復帰アルゴリズム
-            if (e.x < 75) {
-                e.vx = e.speed;
-                e.dir = 1;
-                if (!e.isGrounded && e.vy > 0 && !e.hasAirJumped) {
-                    e.vy = e.jump * 0.9;
-                    e.hasAirJumped = true;
-                }
-            } else if (e.x > 485) {
-                e.vx = -e.speed;
-                e.dir = -1;
-                if (!e.isGrounded && e.vy > 0 && !e.hasAirJumped) {
-                    e.vy = e.jump * 0.9;
-                    e.hasAirJumped = true;
-                }
-            }
-
-            if (p.y < e.y - 45 && Math.random() < 0.05 && e.isGrounded) {
-                e.vy = e.jump;
-                e.isGrounded = false;
-            }
-            
-            if (!e.isGrounded && e.vy > 0 && !e.hasAirJumped && e.y < 208) {
-                e.vy = e.jump * 0.9;
-                e.hasAirJumped = true;
-            }
-            
-            if (e.isGrounded) {
-                e.hasAirJumped = false;
-            }
-
-            // 超反応攻撃（LV9）
-            if (e.cooldown <= 0 && Math.abs(dist) < e.range + 15 && Math.abs(e.y - p.y) < 35 && e.x >= 75 && e.x <= 485) {
-                e.attacking = 12;
-                e.cooldown = 25;
-                const eWp = document.getElementById('enemy-weapon');
-                if (eWp) eWp.style.transform = e.dir === 1 ? 'rotate(75deg)' : 'rotate(-75deg)';
-
-                if (!e.isGrounded) {
-                    enemyWasAirAttacking = true;
-                    enemyAirAttackFrameCount = 0;
+                if (Math.abs(dist) > e.range - 10) {
+                    e.vx = dist > 0 ? -e.speed : e.speed;
+                    e.dir = dist > 0 ? -1 : 1;
+                } else {
+                    e.vx *= 0.7;
                 }
 
-                if (p.invulnTimer <= 0 && !p.onLift) {
-                    let dmgFactor = p.silverMode ? 2.0 : (p.goldMode ? 0.5 : 1.0);
-                    let dmgDeal = Math.floor((Math.random() * 8 + 8) * e.power * (1.0 + p.dmg * 0.005));
-                    p.dmg += Math.floor(dmgDeal * dmgFactor);
+                if ((isNearLeftCliff && e.vx < 0 && isPlayerOutside) || (isNearRightCliff && e.vx > 0 && isPlayerOutside)) {
+                    e.vx = 0;
+                }
 
-                    let kbScale = (4.0 + (p.dmg * 0.16)) / p.weight;
-                    p.vx = e.dir * kbScale;
-                    p.vy = -(2.5 + (p.dmg * 0.08)) / p.weight;
-                    p.knockbackTimer = Math.min(50, Math.floor(12 + p.dmg * 0.15));
-                    p.dir = -e.dir;
+                // ガチ崖復帰アルゴリズム
+                if (e.x < 75) {
+                    e.vx = e.speed; e.dir = 1;
+                    if (!e.isGrounded && e.vy > 0 && !e.hasAirJumped) { e.vy = e.jump * 0.9; e.hasAirJumped = true; }
+                } else if (e.x > 485) {
+                    e.vx = -e.speed; e.dir = -1;
+                    if (!e.isGrounded && e.vy > 0 && !e.hasAirJumped) { e.vy = e.jump * 0.9; e.hasAirJumped = true; }
+                }
 
-                    spawnHitVisual((p.x + e.x) / 2 + 18, (p.y + e.y) / 2 + 20, p.dmg > 80);
-                    updateUI();
+                if (p.y < e.y - 45 && Math.random() < 0.05 && e.isGrounded) {
+                    e.vy = e.jump; e.isGrounded = false;
+                }
+                if (!e.isGrounded && e.vy > 0 && !e.hasAirJumped && e.y < 208) {
+                    e.vy = e.jump * 0.9; e.hasAirJumped = true;
+                }
+                if (e.isGrounded) { e.hasAirJumped = false; }
+
+                // 超反応攻撃（LV9）
+                if (e.cooldown <= 0 && Math.abs(dist) < e.range + 15 && Math.abs(e.y - p.y) < 35 && e.x >= 75 && e.x <= 485) {
+                    e.attacking = 12; e.cooldown = 25;
+                    const eWp = document.getElementById('enemy-weapon');
+                    if (eWp) eWp.style.transform = e.dir === 1 ? 'rotate(75deg)' : 'rotate(-75deg)';
+                    if (!e.isGrounded) { enemyWasAirAttacking = true; enemyAirAttackFrameCount = 0; }
+
+                    if (p.invulnTimer <= 0 && !p.onLift) {
+                        let dmgFactor = p.silverMode ? 2.0 : (p.goldMode ? 0.5 : 1.0);
+                        let dmgDeal = Math.floor((Math.random() * 8 + 8) * e.power * (1.0 + p.dmg * 0.005));
+                        p.dmg += Math.floor(dmgDeal * dmgFactor);
+                        let kbScale = (4.0 + (p.dmg * 0.16)) / p.weight;
+                        p.vx = e.dir * kbScale; p.vy = -(2.5 + (p.dmg * 0.08)) / p.weight;
+                        p.knockbackTimer = Math.min(50, Math.floor(12 + p.dmg * 0.15)); p.dir = -e.dir;
+                        spawnHitVisual((p.x + e.x) / 2 + 18, (p.y + e.y) / 2 + 20, p.dmg > 80); updateUI();
+                    }
                 }
             }
         }
+        if (enemyWasAirAttacking) { enemyAirAttackFrameCount++; if (enemyAirAttackFrameCount > 15) enemyWasAirAttacking = false; }
+    } else {
+        // オンラインモードなら自分のデータをサーバーへ送信
+        if (isMatched && roomId) {
+            socket.emit('player_update', {
+                roomId: roomId,
+                x: p.x, y: p.y, vx: p.vx, vy: p.vy,
+                dmg: p.dmg, stocks: p.stocks, attacking: p.attacking,
+                invulnTimer: p.invulnTimer, onLift: p.onLift
+            });
+        }
     }
 
-    if (enemyWasAirAttacking) {
-        enemyAirAttackFrameCount++;
-        if (enemyAirAttackFrameCount > 15) enemyWasAirAttacking = false;
-    }
-
-    const eBubble = document.getElementById('e-status-bubble');
-    if (enemySleepTimer <= 0 && enemyStunTimer <= 0) {
-        eBubble.style.display = 'none';
-    }
-
-    e.vy += 0.45;
-    e.x += e.vx;
+    // ★ オフライン・オンライン共通の処理として if-else の外側に配置する
+    e.vy += 0.45; 
+    e.x += e.vx; 
     e.y += e.vy;
+
+
+
 
     // 5. ステージの床（プラットフォーム）との衝突判定
     const checkPlatform = (char) => {
@@ -1655,6 +1743,50 @@ function checkOrientation() {
         warning.style.display = 'none';
     }
 }
+// --- オンラインマッチングの受信イベント群 ---
+
+// サーバーからマッチング完了通知が届いたとき
+socket.on('match_start', (data) => {
+    myRole = data.role; // 'host' か 'guest' が割り当てられる
+    roomId = data.roomId;
+    isMatched = true;
+    
+    // 相手が選んだキャラクターとステージの情報を受け取って反映
+    if (myRole === 'guest') {
+        selectedStage = data.stage; // 1P(ホスト)が決定したステージに合わせる
+    }
+    
+    // 本格的にゲーム画面を起動
+    executeGameStart();
+});
+
+// 相手のリアルタイムデータを受信したとき、敵（e）の座標にそのまま上書き
+socket.on('enemy_update', (enemyData) => {
+    e.x = enemyData.x;
+    e.y = enemyData.y;
+    e.vx = enemyData.vx;
+    e.vy = enemyData.vy;
+    e.dmg = enemyData.dmg;
+    e.stocks = enemyData.stocks;
+    e.attacking = enemyData.attacking;
+    e.invulnTimer = enemyData.invulnTimer;
+    e.onLift = enemyData.onLift;
+});
+// 相手が「攻撃を当てた（＝こちらが食らった）」という通知を受け取った時
+socket.on('receive_hit', (hitData) => {
+    if (gameMode !== 'online') return;
+
+    // 自分のデータを相手が計算した吹っ飛び値で上書きする
+    p.dmg += hitData.dmgDeal;
+    p.vx = hitData.vx;
+    p.vy = hitData.vy;
+    p.knockbackTimer = hitData.knockbackTimer;
+
+    // 自分の画面のエフェクトやUIを更新
+    spawnHitVisual((p.x + e.x) / 2 + 18, (p.y + e.y) / 2 + 20, p.dmg > 80);
+    updateUI();
+});
+
 
 // イベント紐付け
 window.addEventListener('resize', () => { resizeGame(); checkOrientation(); });
