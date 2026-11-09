@@ -1049,7 +1049,7 @@ function pressStartButton() {
     }
 }
 
-// 元の startGame() の中身をオンライン対応に拡張した開始関数
+// 元の executeGameStart() を以下に丸ごと差し替えてください
 function executeGameStart() {
     window.scrSelect.style.display = 'none';
     window.scrGame.style.display = 'block';
@@ -1071,19 +1071,16 @@ function executeGameStart() {
         document.getElementById('plat-right').style.display = 'none';
         document.getElementById('plat-top').style.display = 'none';
     }
-
-    let isPawn = (selectedCharKey === 'pawn');
     
+    // プレイヤーの初期化（重複していた hitCount を整理）
     p = {
-
-
         x: startLeft ? 150 : 410, 
         y: 212, 
         vx: 0, vy: 0, dmg: 0,
         isGrounded: true, 
         dir: startLeft ? 1 : -1, 
         stocks: 3, spGauge: 0,
-       isPromoted: false, hitCount: 0,hitCount: 0, speed: c.speed, jump: c.jump,
+        isPromoted: false, hitCount: 0, speed: c.speed, jump: c.jump,
         weight: c.weight, power: c.power, range: c.range,
         passThroughTimer: 0, invulnTimer: 0, onLift: false, liftTimer: 0, attacking: 0
     };
@@ -1114,15 +1111,10 @@ function executeGameStart() {
     document.getElementById('p-shield').style.display = 'none';
     document.getElementById('e-status-bubble').style.display = 'none';
 
-    if (isPawn) {
-        document.getElementById('p-text').textContent = 'と';
-        document.getElementById('ui-p-status').textContent = '【成金化! 全能力1.5倍】';
-        p.power *= 1.5; p.speed *= 1.5; p.weight *= 1.3;
-    } else {
-        document.getElementById('ui-p-status').textContent = '';
-    }
+    // 【修正バグ①】最初から「と金」になっていた処理を除去し、テキストとステータスを空に初期化
+    document.getElementById('ui-p-status').textContent = '';
     
-     if (gameMode === 'offline') {
+    if (gameMode === 'offline') {
         let bossList = BOSS_DATA;
         let chosenBoss = bossList[Math.floor(Math.random() * bossList.length)];
         document.getElementById('ui-e-name').textContent = chosenBoss.name;
@@ -1134,8 +1126,6 @@ function executeGameStart() {
         document.getElementById('ui-e-name').textContent = "対戦相手";
         document.getElementById('e-text').textContent = "敵";
     }
-
-
 
     updateUI();
     setupTouchControls();
@@ -1602,6 +1592,11 @@ function updateFrame() {
             }
         }
         if (enemyWasAirAttacking) { enemyAirAttackFrameCount++; if (enemyAirAttackFrameCount > 15) enemyWasAirAttacking = false; }
+
+        // 【修正バグ②】オフラインの時だけ、敵の物理・移動計算を行う
+        e.vy += 0.45; 
+        e.x += e.vx; 
+        e.y += e.vy;
     } else {
         // オンラインモードなら自分のデータをサーバーへ送信
         if (isMatched && roomId) {
@@ -1613,14 +1608,6 @@ function updateFrame() {
             });
         }
     }
-
-    // ★ オフライン・オンライン共通の処理として if-else の外側に配置する
-    e.vy += 0.45; 
-    e.x += e.vx; 
-    e.y += e.vy;
-
-
-
 
     // 5. ステージの床（プラットフォーム）との衝突判定
     const checkPlatform = (char) => {
@@ -1659,7 +1646,10 @@ function updateFrame() {
     };
 
     checkPlatform(p);
-    checkPlatform(e);
+    // オンライン対戦時はプラットフォーム判定もサーバー/相手側に委ねるため、オフライン時のみ判定
+    if (gameMode === 'offline') {
+        checkPlatform(e);
+    }
 
     // 6. 飛び道具の物理と当たり判定
     for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -1719,12 +1709,18 @@ function updateFrame() {
         eEl.style.left = e.x + 'px';
         eEl.style.top = e.y + 'px';
         eEl.style.opacity = (e.invulnTimer % 6 > 3) ? '0.4' : '1';
+        if (gameMode === 'online' && Math.abs(e.vx) > 0.1) {
+            e.dir = e.vx > 0 ? 1 : -1;
+        }
     }
     const pLift = document.getElementById('player-lift');
     if (pLift && p.onLift) pLift.style.left = (p.x - 7) + 'px';
     const eLift = document.getElementById('enemy-lift');
     if (eLift && e.onLift) eLift.style.left = (e.x - 5) + 'px';
-}
+} // ← updateFrame の閉じ括弧
+
+
+
 
 // 8. 画面フィット（レスポンシブ）＆横画面警告
 function resizeGame() {
