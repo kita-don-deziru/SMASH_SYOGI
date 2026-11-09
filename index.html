@@ -508,6 +508,76 @@ const BOSS_DATA = [
 
 let selectedCharKey = 'pawn'; let selectedStage = 1; let gameTimer = null; let p = {}, e = {};
 const keys = { arrowleft: false, arrowright: false, ' ': false, z: false, x: false, shift: false };
+// ==============================================================================
+// 🏆 【消失データ完全大復活】レート・カラー・オンライン通信システム基礎全集
+// ==============================================================================
+
+// 💡 消えていたレートシステムの初期値と復元処理を完全配置
+let playerRating = 1500; 
+try {
+    let savedRating = localStorage.getItem('smash_shogi_rating_value');
+    if (savedRating) playerRating = parseInt(savedRating, 10);
+} catch(e) { playerRating = 1500; }
+
+let currentRoomId = "";
+let maxPlayers = 2; // ルームの最大人数（2〜4人）
+let activeFighters = {}; // 部屋にいる全プレイヤーのデータを管理
+
+// 💡 消えていた複数人対戦時の色データを完全配置
+const FIGHTER_COLORS = {
+    1: { bg: '#ffebc2', text: '#000000', name: 'あなた' },
+    2: { bg: '#ffd27f', text: '#b32727', name: 'プレイヤー2' },
+    3: { bg: '#a3cbf1', text: '#0e4a86', name: 'プレイヤー3' },
+    4: { bg: '#c8f7c5', text: '#1e681a', name: 'プレイヤー4' }
+};
+
+// 💡 消えていた ELOレート計算関数（calculateNewRating）
+function calculateNewRating(myRate, enemyRate, isWin) {
+    const K = 32;
+    const expectedScore = 1 / (1 + Math.pow(10, (enemyRate - myRate) / 400));
+    const actualScore = isWin ? 1 : 0;
+    const newRate = Math.round(myRate + K * (actualScore - expectedScore));
+    localStorage.setItem('smash_shogi_rating_value', newRate);
+    return newRate;
+}
+
+// 💡 消えていた 人数切り替え関数（setMatchPlayers）
+function setMatchPlayers(num, btn) {
+    maxPlayers = num;
+    document.querySelectorAll('#custom-room-section .stage-btn').forEach(b => {
+        if(b.id === 'btn-p2' || b.id === 'btn-p3' || b.id === 'btn-p4') b.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+    document.getElementById('room-status-text').textContent = '対戦ルール：' + num + '人乱闘モードが選択されました。';
+}
+
+// 💡 消えていた 部屋作成関数（requestCreateRoom）
+function requestCreateRoom() {
+    if (!socket || !socket.connected) { alert("サーバーと通信できません。オフラインモードでプレイしてください。"); return; }
+    const txt = document.getElementById('room-status-text');
+    if (txt) txt.textContent = "部屋を作成中...";
+    socket.emit('create_friend_room', { char: selectedCharKey, stage: selectedStage, maxPlayers: maxPlayers, rating: playerRating });
+}
+
+// 💡 消えていた 部屋入室関数（requestJoinRoom）
+function requestJoinRoom() {
+    if (!socket || !socket.connected) { alert("サーバーと通信できません。"); return; }
+    const input = document.getElementById('input-room-id');
+    if (!input || !input.value.trim()) { alert("部屋番号を入力してください。"); return; }
+    const roomIdInput = input.value.trim();
+    const txt = document.getElementById('room-status-text');
+    if (txt) txt.textContent = '部屋 [' + roomIdInput + '] に入室を試みています...';
+    socket.emit('join_friend_room', { roomId: roomIdInput, char: selectedCharKey, rating: playerRating });
+}
+
+// 💡 消えていた リアルタイムデータ送信関数（broadcastMultiplayerData）
+function broadcastMultiplayerData() {
+    if (gameMode === 'online' && isMatched && currentRoomId) {
+        socket.emit('multi_player_update', {
+            roomId: currentRoomId, x: p.x, y: p.y, vx: p.vx, vy: p.vy, dmg: p.dmg, stocks: p.stocks, attacking: p.attacking, invulnTimer: p.invulnTimer, onLift: p.onLift
+        });
+    }
+}
 
 
 const uParts = [ 'ht', 'tps', '://', 'solid', '-space', '-dollop', '-w9gg5wqvw5j394rx', '-3000', '.app', '.github', '.dev' ];
@@ -1618,12 +1688,14 @@ function injectOnlineRoomUI() {
 }
 
 
+    // ✨ ここにこの1行を付け足してください（コピペOK）
     if (typeof initSelectScreen === 'function') initSelectScreen();
-    if (typeof injectOnlineRoomUI === 'function') injectOnlineRoomUI();
+    if (typeof injectOnlineRoomUI === 'function') injectOnlineRoomUI(); // 💡【トリガー大復活】：これで部屋とレートが100%再出現します！
     
     if (typeof resizeGame === 'function') resizeGame(); 
     if (typeof checkOrientation === 'function') checkOrientation();
 }, 100);
+
 </script>
 </body>
 </html>
