@@ -1799,6 +1799,8 @@ window.addEventListener('resize', () => { resizeGame(); checkOrientation(); });
 window.addEventListener('orientationchange', () => { resizeGame(); checkOrientation(); });
 
 // 画面が組み立て終わるのを待ってから安全に初期化
+} // ← 迷子になっていた updateFrame の閉じ波括弧
+
 setTimeout(() => { 
     window.scrTitle = document.getElementById('title-screen');
     window.scrSelect = document.getElementById('select-screen');
@@ -1811,6 +1813,7 @@ setTimeout(() => {
     resizeGame(); 
     checkOrientation(); 
 }, 100);
+
 </script>
 </body>
 </html>
