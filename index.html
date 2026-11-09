@@ -701,7 +701,7 @@ let socket = null;
 try {
     if (typeof io !== 'undefined') {
         // 💡 Renderが自動で繋いでくれた固定URLを直書きして上書きします！（:3000などの数字は一切不要です）
-        socket = io('https://smash-shogi-server2.onrender.com/', { 
+        socket = io('https://smash-shogi-server2.onrender.com', { 
             transports: ['websocket', 'polling'],
             secure: true,
             rejectUnauthorized: false
