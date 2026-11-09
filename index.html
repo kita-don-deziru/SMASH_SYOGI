@@ -700,11 +700,14 @@ let socket = null;
 // エラーが発生してもゲームが止まらないようにガードします
 try {
     if (typeof io !== 'undefined') {
-        // 💡 Renderが自動で繋いでくれた固定URLを直書きして上書きします！（:3000などの数字は一切不要です）
+        // 💡 サーバーへの接続設定を極限まで強化し、古いイベントやプロキシのブロックを強制突破します！
         socket = io('https://smash-shogi-server2.onrender.com', { 
             transports: ['websocket', 'polling'],
             secure: true,
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            reconnectionAttempts: 10,
+            timeout: 10000,
+            forceNew: true // 💡 古い通信の残骸を強制的に破棄して新品の回線を作ります
         });
     } else {
         console.warn("Socket.IOが読み込まれていないため、オフラインモードのみ動作します。");
@@ -712,6 +715,7 @@ try {
 } catch (ex) {
     console.error("通信初期化エラー:", ex);
 }
+
 
 
 
