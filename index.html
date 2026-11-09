@@ -488,8 +488,7 @@
     </style>
 
     <!-- リアルタイム通信を行うためのSocket.ioライブラリを追加 -->
-<script src="https://socket.io"></script>
-
+   <script src="/socket.io/socket.io.js"></script>
 
 </head>
 
@@ -727,7 +726,12 @@ const keys = { arrowleft: false, arrowright: false, ' ': false, z: false, x: fal
 
 // --- オンライン用変数を追加 ---
 // ※ localhost:3000 は手元のPCテスト用です。ネット公開時はURLを書き換えます。
-const socket = io('https://solid-space-dollop-w9gg5wqvw5j394rx-3000.app.github.dev'); 
+// --- オンライン用変数を追加 ---
+const socket = io('https://solid-space-dollop-w9gg5wqvw5j394rx-3000.app.github.dev/', {
+    transports: ['websocket', 'polling']
+});
+
+
 let myRole = null;       // 'host' (1P/左側) または 'guest' (2P/右側)
 let roomId = null;       // マッチングした部屋のID
 let isMatched = false;   // マッチングが成立したか
